@@ -1,0 +1,25 @@
+name: Install gibo
+author: Yui KITSU
+description: Install gibo
+branding:
+  icon: folder-minus
+  color: white
+
+inputs: {}
+outputs: {}
+
+runs:
+  using: composite
+  steps:
+    - run: |
+        tmpdir=$(mktemp -d)
+        cd "${tmpdir}"
+        target=gibo_Linux_x86_64.tar.gz
+        url="https://github.com/simonwhitaker/gibo/releases/download/v3.0.7/${target}"
+        wget "${url}"
+        tar -xzf "${target}"
+        cp gibo /usr/local/bin
+        chmod +x /usr/local/bin/gibo
+        gibo update
+        rm -rf "${tmpdir}"
+      shell: bash
