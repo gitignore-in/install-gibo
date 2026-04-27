@@ -14,12 +14,48 @@ runs:
     - run: |
         tmpdir=$(mktemp -d)
         cd "${tmpdir}"
-        target=gibo_Linux_x86_64.tar.gz
-        url="https://github.com/simonwhitaker/gibo/releases/download/v3.0.7/${target}"
-        wget "${url}"
-        tar -xzf "${target}"
-        cp gibo /usr/local/bin
-        chmod +x /usr/local/bin/gibo
-        gibo update
+        version=v3.0.7
+        executable=gibo
+        case "${RUNNER_OS}-${RUNNER_ARCH}" in
+          Linux-X64)
+            target="gibo_Linux_x86_64.tar.gz"
+            ;;
+          Linux-ARM64)
+            target="gibo_Linux_arm64.tar.gz"
+            ;;
+          macOS-X64)
+            target="gibo_Darwin_x86_64.tar.gz"
+            ;;
+          macOS-ARM64)
+            target="gibo_Darwin_arm64.tar.gz"
+            ;;
+          Windows-X64)
+            target="gibo_Windows_x86_64.zip"
+            executable=gibo.exe
+            ;;
+          Windows-ARM64)
+            target="gibo_Windows_arm64.zip"
+            executable=gibo.exe
+            ;;
+          *)
+            echo "Unsupported runner platform: ${RUNNER_OS}-${RUNNER_ARCH}" >&2
+            exit 1
+            ;;
+        esac
+        url="https://github.com/simonwhitaker/gibo/releases/download/${version}/${target}"
+        curl -fsSLO "${url}"
+        case "${target}" in
+          *.tar.gz)
+            tar -xzf "${target}"
+            ;;
+          *.zip)
+            unzip -q "${target}"
+            ;;
+        esac
+        mkdir -p "${RUNNER_TEMP}/gibo/bin"
+        cp "${executable}" "${RUNNER_TEMP}/gibo/bin/${executable}"
+        chmod +x "${RUNNER_TEMP}/gibo/bin/${executable}"
+        echo "${RUNNER_TEMP}/gibo/bin" >> "${GITHUB_PATH}"
+        "${RUNNER_TEMP}/gibo/bin/${executable}" update
         rm -rf "${tmpdir}"
       shell: bash
