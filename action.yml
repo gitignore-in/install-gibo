@@ -12,29 +12,37 @@ runs:
   using: composite
   steps:
     - run: |
+        set -euo pipefail
         tmpdir=$(mktemp -d)
+        trap 'rm -rf "${tmpdir}"' EXIT
         cd "${tmpdir}"
         version=v3.0.7
         executable=gibo
         case "${RUNNER_OS}-${RUNNER_ARCH}" in
           Linux-X64)
             target="gibo_Linux_x86_64.tar.gz"
+            checksums="checksums.txt"
             ;;
           Linux-ARM64)
             target="gibo_Linux_arm64.tar.gz"
+            checksums="checksums.txt"
             ;;
           macOS-X64)
             target="gibo_Darwin_x86_64.tar.gz"
+            checksums="checksums.txt"
             ;;
           macOS-ARM64)
             target="gibo_Darwin_arm64.tar.gz"
+            checksums="checksums.txt"
             ;;
           Windows-X64)
             target="gibo_Windows_x86_64.zip"
+            checksums="checksums.windows.txt"
             executable=gibo.exe
             ;;
           Windows-ARM64)
             target="gibo_Windows_arm64.zip"
+            checksums="checksums.windows.txt"
             executable=gibo.exe
             ;;
           *)
@@ -42,8 +50,11 @@ runs:
             exit 1
             ;;
         esac
-        url="https://github.com/simonwhitaker/gibo/releases/download/${version}/${target}"
-        curl -fsSLO "${url}"
+        release_url="https://github.com/simonwhitaker/gibo/releases/download/${version}"
+        curl -fsSLO "${release_url}/${target}"
+        curl -fsSLO "${release_url}/${checksums}"
+        grep -F "  ${target}" "${checksums}" > "${target}.sha256"
+        sha256sum --check "${target}.sha256"
         case "${target}" in
           *.tar.gz)
             tar -xzf "${target}"
@@ -57,5 +68,4 @@ runs:
         chmod +x "${RUNNER_TEMP}/gibo/bin/${executable}"
         echo "${RUNNER_TEMP}/gibo/bin" >> "${GITHUB_PATH}"
         "${RUNNER_TEMP}/gibo/bin/${executable}" update
-        rm -rf "${tmpdir}"
       shell: bash
