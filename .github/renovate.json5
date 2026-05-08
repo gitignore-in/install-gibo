@@ -2,5 +2,14 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
     "local>kitsuyui/renovate-config"
+  ],
+  "packageRules": [
+    {
+      "description": "Manage GitHub Actions workflow updates with Renovate.",
+      "matchManagers": [
+        "github-actions"
+      ],
+      "groupName": "GitHub Actions"
+    }
   ]
 }
