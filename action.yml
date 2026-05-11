@@ -5,19 +5,54 @@ branding:
   icon: folder-minus
   color: white
 
-inputs: {}
-outputs: {}
+inputs:
+  version:
+    description: |
+      gibo release tag to install. Leave empty to use the version pinned
+      by the action (kept up to date by the Renovate custom manager).
+      Override to install a different release.
+    required: false
+    default: ''
+  update:
+    description: |
+      Whether to run `gibo update` after installing the binary. Set to
+      'false' when the caller restores `~/.gitignore-boilerplates` from
+      `actions/cache` and wants to keep the cached database instead of
+      unconditionally pulling upstream changes.
+    required: false
+    default: 'true'
+
+outputs:
+  version:
+    description: gibo release tag that was installed.
+    value: ${{ steps.install.outputs.version }}
+  bin-dir:
+    description: |
+      Directory containing the installed gibo executable. Already added
+      to GITHUB_PATH; exposed so callers can reference it from
+      `actions/cache` keys or other tooling.
+    value: ${{ steps.install.outputs.bin-dir }}
+  boilerplates-dir:
+    description: |
+      Directory where gibo stores its boilerplates database (the target
+      of `gibo update`). Useful as the `path` of an `actions/cache` step
+      that caches the database across runs.
+    value: ${{ steps.install.outputs.boilerplates-dir }}
 
 runs:
   using: composite
   steps:
-    - run: |
+    - id: install
+      run: |
         set -euo pipefail
         tmpdir=$(mktemp -d)
         trap 'rm -rf "${tmpdir}"' EXIT
         cd "${tmpdir}"
         # renovate: datasource=github-releases depName=simonwhitaker/gibo
         version=v3.0.22
+        if [ -n "${INPUT_VERSION}" ]; then
+          version="${INPUT_VERSION}"
+        fi
         executable=gibo
         case "${RUNNER_OS}-${RUNNER_ARCH}" in
           Linux-X64)
@@ -64,9 +99,33 @@ runs:
             unzip -q "${target}"
             ;;
         esac
-        mkdir -p "${RUNNER_TEMP}/gibo/bin"
-        cp "${executable}" "${RUNNER_TEMP}/gibo/bin/${executable}"
-        chmod +x "${RUNNER_TEMP}/gibo/bin/${executable}"
-        echo "${RUNNER_TEMP}/gibo/bin" >> "${GITHUB_PATH}"
-        "${RUNNER_TEMP}/gibo/bin/${executable}" update
+        bin_dir="${RUNNER_TEMP}/gibo/bin"
+        mkdir -p "${bin_dir}"
+        cp "${executable}" "${bin_dir}/${executable}"
+        chmod +x "${bin_dir}/${executable}"
+        echo "${bin_dir}" >> "${GITHUB_PATH}"
+
+        case "${INPUT_UPDATE}" in
+          true)
+            "${bin_dir}/${executable}" update
+            ;;
+          false)
+            echo "Skipping 'gibo update' because inputs.update=false." >&2
+            ;;
+          *)
+            echo "inputs.update must be 'true' or 'false'; got '${INPUT_UPDATE}'." >&2
+            exit 1
+            ;;
+        esac
+
+        boilerplates_dir="${HOME}/.gitignore-boilerplates"
+
+        {
+          echo "version=${version}"
+          echo "bin-dir=${bin_dir}"
+          echo "boilerplates-dir=${boilerplates_dir}"
+        } >> "${GITHUB_OUTPUT}"
       shell: bash
+      env:
+        INPUT_VERSION: ${{ inputs.version }}
+        INPUT_UPDATE: ${{ inputs.update }}
