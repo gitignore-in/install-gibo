@@ -50,6 +50,15 @@ runs:
         cd "${tmpdir}"
         # renovate: datasource=github-releases depName=simonwhitaker/gibo
         version=v3.0.22
+        # Anchor SHA256 of the upstream release's checksums files at the
+        # pinned `version` above. Pinning these in this repo's git history
+        # moves the trust anchor from "same release URL" to this commit's
+        # review trail, defending against upstream tag rewrite, release
+        # artifact replacement, and TLS MITM. Must be updated whenever
+        # `version` changes; see README.md (Security model).
+        checksums_txt_sha256=80f59fbfd31eac67bf7a3839909b65b28795594304dac5bae8611db0647c5d67
+        checksums_windows_txt_sha256=8f41f9ad8d3f95520f23f2589eae9747f3599c5d682d9a90c2063b617787ee16
+        default_version="${version}"
         if [ -n "${INPUT_VERSION}" ]; then
           version="${INPUT_VERSION}"
         fi
@@ -58,27 +67,33 @@ runs:
           Linux-X64)
             target="gibo_Linux_x86_64.tar.gz"
             checksums="checksums.txt"
+            checksums_anchor="${checksums_txt_sha256}"
             ;;
           Linux-ARM64)
             target="gibo_Linux_arm64.tar.gz"
             checksums="checksums.txt"
+            checksums_anchor="${checksums_txt_sha256}"
             ;;
           macOS-X64)
             target="gibo_Darwin_x86_64.tar.gz"
             checksums="checksums.txt"
+            checksums_anchor="${checksums_txt_sha256}"
             ;;
           macOS-ARM64)
             target="gibo_Darwin_arm64.tar.gz"
             checksums="checksums.txt"
+            checksums_anchor="${checksums_txt_sha256}"
             ;;
           Windows-X64)
             target="gibo_Windows_x86_64.zip"
             checksums="checksums.windows.txt"
+            checksums_anchor="${checksums_windows_txt_sha256}"
             executable=gibo.exe
             ;;
           Windows-ARM64)
             target="gibo_Windows_arm64.zip"
             checksums="checksums.windows.txt"
+            checksums_anchor="${checksums_windows_txt_sha256}"
             executable=gibo.exe
             ;;
           *)
@@ -89,6 +104,13 @@ runs:
         release_url="https://github.com/simonwhitaker/gibo/releases/download/${version}"
         curl -fsSLO "${release_url}/${target}"
         curl -fsSLO "${release_url}/${checksums}"
+        if [ "${version}" = "${default_version}" ]; then
+          echo "${checksums_anchor}  ${checksums}" | sha256sum --check -
+        else
+          echo "install-gibo: inputs.version='${version}' differs from the action-pinned default '${default_version}'." >&2
+          echo "install-gibo: anchor verification is skipped; the checksums file is trusted self-referentially (same release URL as the archive)." >&2
+          echo "install-gibo: see README.md (Security model) for the implications." >&2
+        fi
         grep -F "  ${target}" "${checksums}" > "${target}.sha256"
         sha256sum --check "${target}.sha256"
         case "${target}" in
