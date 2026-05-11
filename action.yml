@@ -16,7 +16,8 @@ runs:
         tmpdir=$(mktemp -d)
         trap 'rm -rf "${tmpdir}"' EXIT
         cd "${tmpdir}"
-        version=v3.0.7
+        # renovate: datasource=github-releases depName=simonwhitaker/gibo
+        version=v3.0.22
         executable=gibo
         case "${RUNNER_OS}-${RUNNER_ARCH}" in
           Linux-X64)
