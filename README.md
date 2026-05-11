@@ -49,6 +49,37 @@ steps:
   shell: bash
 ```
 
+## Security model
+
+The action downloads release artifacts from upstream
+[`simonwhitaker/gibo`](https://github.com/simonwhitaker/gibo), which does not
+publish cosign/SLSA signatures. To avoid a self-referential trust chain
+(where both the archive and its checksums file come from the same release
+URL and can be swapped together), the action pins the SHA256 of upstream's
+`checksums.txt` / `checksums.windows.txt` for the **default** `version`
+directly in `action.yml`. The trust anchor is therefore this repository's
+git history (commit review, branch protection) rather than the upstream
+release URL.
+
+What this defends against, for the default `version`:
+
+- Upstream tag rewrite or release artifact replacement after publish
+- TLS / CDN MITM that rewrites both archive and checksums in flight
+
+What it does **not** defend against:
+
+- Upstream compromise that occurs **before** the pinned anchor was committed
+  to this repository
+- A future `version` bump (with matching anchor update) merged into this
+  repository under a compromised review process
+
+When you set `inputs.version` to anything other than the action's pinned
+default, the action falls back to the original self-referential verification
+(both files trusted because they were fetched from the same release URL),
+and prints a warning on stderr. Pinning a non-default `version` does **not**
+disable archive verification — `sha256sum --check` still runs against the
+downloaded `checksums` file — but the anchor step is skipped.
+
 ## License
 
 MIT
