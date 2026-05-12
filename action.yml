@@ -132,7 +132,7 @@ runs:
             exit 1
             ;;
         esac
-        bin_dir="${RUNNER_TEMP}/gibo/bin"
+        bin_dir="${RUNNER_TEMP}/gibo/${version}/bin"
         mkdir -p "${bin_dir}"
         cp "${executable}" "${bin_dir}/${executable}"
         chmod +x "${bin_dir}/${executable}"
