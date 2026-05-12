@@ -10,6 +10,21 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     name: test
+    env:
+      BOILERPLATES_REF: 1046d8fba6b42d367da6314c934cddb6bfe5662e
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-      - uses: ./
+      - id: gibo
+        uses: ./
+        with:
+          boilerplates-ref: ${{ env.BOILERPLATES_REF }}
+      - name: Check pinned boilerplates database
+        run: |
+          set -euo pipefail
+          test "${BOILERPLATES_COMMIT}" = "${BOILERPLATES_REF}"
+          git -C "${BOILERPLATES_DIR}" rev-parse --verify HEAD
+          gibo dump Python >/tmp/python.gitignore
+        shell: bash
+        env:
+          BOILERPLATES_COMMIT: ${{ steps.gibo.outputs.boilerplates-commit }}
+          BOILERPLATES_DIR: ${{ steps.gibo.outputs.boilerplates-dir }}

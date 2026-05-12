@@ -16,11 +16,19 @@ inputs:
   update:
     description: |
       Whether to run `gibo update` after installing the binary. Set to
-      'false' when the caller restores `~/.gitignore-boilerplates` from
+      'false' when the caller restores the boilerplates database from
       `actions/cache` and wants to keep the cached database instead of
       unconditionally pulling upstream changes.
     required: false
     default: 'true'
+  boilerplates-ref:
+    description: |
+      Optional git ref for the boilerplates database. When set, the
+      action resolves the ref in the `gibo root` directory and checks
+      it out after `gibo update`, making later `gibo dump` output
+      reproducible for the selected database commit.
+    required: false
+    default: ''
 
 outputs:
   version:
@@ -35,9 +43,16 @@ outputs:
   boilerplates-dir:
     description: |
       Directory where gibo stores its boilerplates database (the target
-      of `gibo update`). Useful as the `path` of an `actions/cache` step
-      that caches the database across runs.
+      of `gibo update`, as reported by `gibo root`). Useful as the
+      `path` of an `actions/cache` step that caches the database across
+      runs.
     value: ${{ steps.install.outputs.boilerplates-dir }}
+  boilerplates-commit:
+    description: |
+      Resolved commit of the boilerplates database when the database is
+      present. Empty when the action did not create or restore the
+      database.
+    value: ${{ steps.install.outputs.boilerplates-commit }}
 
 runs:
   using: composite
@@ -137,6 +152,7 @@ runs:
         cp "${executable}" "${bin_dir}/${executable}"
         chmod +x "${bin_dir}/${executable}"
         echo "${bin_dir}" >> "${GITHUB_PATH}"
+        boilerplates_dir="$("${bin_dir}/${executable}" root)"
 
         case "${INPUT_UPDATE}" in
           true)
@@ -151,14 +167,33 @@ runs:
             ;;
         esac
 
-        boilerplates_dir="${HOME}/.gitignore-boilerplates"
+        boilerplates_commit=""
+        if [ -n "${INPUT_BOILERPLATES_REF}" ]; then
+          if [ ! -d "${boilerplates_dir}/.git" ]; then
+            echo "install-gibo: inputs.boilerplates-ref was set, but '${boilerplates_dir}' is not a git repository." >&2
+            echo "install-gibo: run with update='true' or restore the boilerplates database before pinning it." >&2
+            exit 1
+          fi
+
+          if ! boilerplates_commit=$(git -C "${boilerplates_dir}" rev-parse --verify "${INPUT_BOILERPLATES_REF}^{commit}" 2>/dev/null); then
+            git -C "${boilerplates_dir}" fetch --tags origin "${INPUT_BOILERPLATES_REF}"
+            boilerplates_commit=$(git -C "${boilerplates_dir}" rev-parse --verify "FETCH_HEAD^{commit}")
+          fi
+          git -C "${boilerplates_dir}" checkout --detach "${boilerplates_commit}"
+        fi
+
+        if [ -d "${boilerplates_dir}/.git" ]; then
+          boilerplates_commit=$(git -C "${boilerplates_dir}" rev-parse HEAD)
+        fi
 
         {
           echo "version=${version}"
           echo "bin-dir=${bin_dir}"
           echo "boilerplates-dir=${boilerplates_dir}"
+          echo "boilerplates-commit=${boilerplates_commit}"
         } >> "${GITHUB_OUTPUT}"
       shell: bash
       env:
         INPUT_VERSION: ${{ inputs.version }}
         INPUT_UPDATE: ${{ inputs.update }}
+        INPUT_BOILERPLATES_REF: ${{ inputs.boilerplates-ref }}
