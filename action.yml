@@ -102,14 +102,21 @@ runs:
             ;;
         esac
         release_url="https://github.com/simonwhitaker/gibo/releases/download/${version}"
-        curl -fsSLO "${release_url}/${target}"
-        curl -fsSLO "${release_url}/${checksums}"
+        curl -fsSLO --retry 3 --retry-delay 2 --connect-timeout 10 --max-time 30 "${release_url}/${target}"
+        curl -fsSLO --retry 3 --retry-delay 2 --connect-timeout 10 --max-time 30 "${release_url}/${checksums}"
         if [ "${version}" = "${default_version}" ]; then
           echo "${checksums_anchor}  ${checksums}" | sha256sum --check -
         else
           echo "install-gibo: inputs.version='${version}' differs from the action-pinned default '${default_version}'." >&2
           echo "install-gibo: anchor verification is skipped; the checksums file is trusted self-referentially (same release URL as the archive)." >&2
           echo "install-gibo: see README.md (Security model) for the implications." >&2
+        fi
+        if ! grep -qF "  ${target}" "${checksums}"; then
+          echo "install-gibo: checksum entry for '${target}' not found in '${checksums}'." >&2
+          echo "install-gibo: this usually means the checksums file format has changed upstream." >&2
+          echo "install-gibo: checksums file contents:" >&2
+          cat "${checksums}" >&2
+          exit 1
         fi
         grep -F "  ${target}" "${checksums}" > "${target}.sha256"
         sha256sum --check "${target}.sha256"
@@ -119,6 +126,10 @@ runs:
             ;;
           *.zip)
             unzip -q "${target}"
+            ;;
+          *)
+            echo "install-gibo: unsupported archive format: ${target}" >&2
+            exit 1
             ;;
         esac
         bin_dir="${RUNNER_TEMP}/gibo/bin"
