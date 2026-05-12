@@ -73,6 +73,32 @@ steps:
   shell: bash
 ```
 
+## Concurrency notes
+
+### Multiple calls in the same job
+
+Calling this action twice in the same job (e.g., to install two different versions
+side-by-side) is supported. Each version is installed into its own directory
+(`$RUNNER_TEMP/gibo/<version>/bin`), so installations do not overwrite each other.
+Both versions are added to `PATH`; the first entry wins for unqualified `gibo` calls.
+Use `outputs.bin-dir` from each step to invoke a specific version explicitly.
+
+### Parallel jobs on self-hosted runners
+
+When multiple jobs run concurrently on a self-hosted runner **sharing the same user
+account**, they share `$HOME/.gitignore-boilerplates`. If two jobs both call this
+action with `update: 'true'` at the same time, both will run `gibo update` against
+that shared directory simultaneously. The `gibo update` command performs a `git clone`
+or `git pull`, which is not safe under concurrent writers — a `.git/index.lock`
+conflict or partial ref state can occur.
+
+**Recommended mitigation for self-hosted runners:**
+
+- Cache the boilerplates database and set `update: 'false'` (see [Caching](#caching-the-boilerplates-database) above).
+  Only one job — the cache populator — runs `gibo update`, and subsequent jobs
+  restore from cache without writing to the shared directory.
+- Or use [GitHub-hosted runners](https://docs.github.com/en/actions/using-github-hosted-runners/), where each job gets an isolated VM.
+
 ## Security model
 
 The action downloads release artifacts from upstream
