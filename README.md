@@ -13,7 +13,8 @@ steps:
 | Input | Default | Description |
 | --- | --- | --- |
 | `version` | (action pin) | gibo release tag (e.g. `v3.0.22`). Leave empty to use the version pinned by the action. |
-| `update` | `'true'` | Run `gibo update` after install. Set to `'false'` to skip the unconditional database refresh, e.g. when caching `~/.gitignore-boilerplates` externally. |
+| `update` | `'true'` | Run `gibo update` after install. Set to `'false'` to skip the unconditional database refresh, e.g. when caching the boilerplates database externally. |
+| `boilerplates-ref` | `''` | Optional git ref to check out in the boilerplates database after `gibo update`. Use a commit SHA to make later `gibo dump` output reproducible. |
 
 ## Outputs
 
@@ -21,11 +22,34 @@ steps:
 | --- | --- |
 | `version` | gibo release tag that was installed. |
 | `bin-dir` | Directory containing the gibo executable (already on `PATH`). |
-| `boilerplates-dir` | Directory where gibo stores its boilerplates database (e.g. `$HOME/.gitignore-boilerplates`). |
+| `boilerplates-dir` | Directory where gibo stores its boilerplates database, as reported by `gibo root`. |
+| `boilerplates-commit` | Resolved commit of the boilerplates database, when present. |
+
+## Pinning the boilerplates database
+
+By default, `gibo update` follows the current upstream boilerplates database
+HEAD. Pin `boilerplates-ref` to a commit SHA when downstream steps need
+byte-reproducible `gibo dump` output:
+
+```yaml
+steps:
+- uses: actions/checkout@v4
+- id: gibo
+  uses: gitignore-in/install-gibo@main
+  with:
+    boilerplates-ref: 0123456789abcdef0123456789abcdef01234567
+
+- run: |
+    echo "database commit: ${{ steps.gibo.outputs.boilerplates-commit }}"
+    gibo dump Python > .gitignore
+  shell: bash
+```
 
 ## Caching the boilerplates database
 
-`gibo update` clones / pulls `simonwhitaker/gitignore-boilerplates` on every run. Pair the action with `actions/cache` and `update: 'false'` to keep that database across runs:
+`gibo update` clones / pulls the upstream boilerplates database on every run.
+Pair the action with `actions/cache` and `update: 'false'` to keep that
+database across runs:
 
 ```yaml
 steps:
