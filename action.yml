@@ -151,8 +151,19 @@ runs:
         mkdir -p "${bin_dir}"
         cp "${executable}" "${bin_dir}/${executable}"
         chmod +x "${bin_dir}/${executable}"
-        echo "${bin_dir}" >> "${GITHUB_PATH}"
         boilerplates_dir="$("${bin_dir}/${executable}" root)"
+        created_boilerplates_dir=false
+        if [ ! -e "${boilerplates_dir}" ]; then
+          created_boilerplates_dir=true
+        fi
+
+        cleanup_partial_install() {
+          rm -rf "${bin_dir}"
+          if [ "${created_boilerplates_dir}" = true ]; then
+            rm -rf "${boilerplates_dir}"
+          fi
+        }
+        trap 'cleanup_partial_install; rm -rf "${tmpdir}"' EXIT
 
         case "${INPUT_UPDATE}" in
           true)
@@ -192,6 +203,8 @@ runs:
           echo "boilerplates-dir=${boilerplates_dir}"
           echo "boilerplates-commit=${boilerplates_commit}"
         } >> "${GITHUB_OUTPUT}"
+        echo "${bin_dir}" >> "${GITHUB_PATH}"
+        trap 'rm -rf "${tmpdir}"' EXIT
       shell: bash
       env:
         INPUT_VERSION: ${{ inputs.version }}
