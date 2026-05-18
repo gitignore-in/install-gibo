@@ -153,11 +153,17 @@ runs:
         chmod +x "${bin_dir}/${executable}"
         boilerplates_dir="$("${bin_dir}/${executable}" root)"
         created_boilerplates_dir=false
-        if [ ! -e "${boilerplates_dir}" ]; then
-          created_boilerplates_dir=true
-        fi
+        gibo_update_lock_dir=""
+
+        cleanup_gibo_update_lock() {
+          if [ -n "${gibo_update_lock_dir}" ]; then
+            rmdir "${gibo_update_lock_dir}" 2>/dev/null || true
+            gibo_update_lock_dir=""
+          fi
+        }
 
         cleanup_partial_install() {
+          cleanup_gibo_update_lock
           rm -rf "${bin_dir}"
           if [ "${created_boilerplates_dir}" = true ]; then
             rm -rf "${boilerplates_dir}"
@@ -165,16 +171,56 @@ runs:
         }
         trap 'cleanup_partial_install; rm -rf "${tmpdir}"' EXIT
 
+        acquire_boilerplates_lock() {
+          local lock_dir="${boilerplates_dir}.update.lock"
+          local lock_wait_seconds=300
+          local lock_sleep_seconds=2
+          local waited_seconds=0
+
+          while ! mkdir "${lock_dir}" 2>/dev/null; do
+            if [ "${waited_seconds}" -ge "${lock_wait_seconds}" ]; then
+              echo "install-gibo: timed out waiting for gibo update lock: ${lock_dir}" >&2
+              echo "install-gibo: another process may still be updating the shared boilerplates database." >&2
+              exit 1
+            fi
+            if [ "${waited_seconds}" -eq 0 ]; then
+              echo "install-gibo: waiting for gibo update lock: ${lock_dir}" >&2
+            fi
+            sleep "${lock_sleep_seconds}"
+            waited_seconds=$((waited_seconds + lock_sleep_seconds))
+          done
+
+          gibo_update_lock_dir="${lock_dir}"
+        }
+
+        run_gibo_update() {
+          if [ ! -e "${boilerplates_dir}" ]; then
+            created_boilerplates_dir=true
+          fi
+          "${bin_dir}/${executable}" update
+        }
+
         case "${INPUT_UPDATE}" in
           true)
-            "${bin_dir}/${executable}" update
             ;;
           false)
-            echo "Skipping 'gibo update' because inputs.update=false." >&2
             ;;
           *)
             echo "inputs.update must be 'true' or 'false'; got '${INPUT_UPDATE}'." >&2
             exit 1
+            ;;
+        esac
+
+        if [ "${INPUT_UPDATE}" = true ] || [ -n "${INPUT_BOILERPLATES_REF}" ]; then
+          acquire_boilerplates_lock
+        fi
+
+        case "${INPUT_UPDATE}" in
+          true)
+            run_gibo_update
+            ;;
+          false)
+            echo "Skipping 'gibo update' because inputs.update=false." >&2
             ;;
         esac
 
@@ -196,6 +242,7 @@ runs:
         if [ -d "${boilerplates_dir}/.git" ]; then
           boilerplates_commit=$(git -C "${boilerplates_dir}" rev-parse HEAD)
         fi
+        cleanup_gibo_update_lock
 
         {
           echo "version=${version}"
