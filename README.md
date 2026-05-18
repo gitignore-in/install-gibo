@@ -87,10 +87,12 @@ Use `outputs.bin-dir` from each step to invoke a specific version explicitly.
 
 When multiple jobs run concurrently on a self-hosted runner **sharing the same user
 account**, they share `$HOME/.gitignore-boilerplates`. If two jobs both call this
-action with `update: 'true'` at the same time, both will run `gibo update` against
-that shared directory simultaneously. The `gibo update` command performs a `git clone`
-or `git pull`, which is not safe under concurrent writers — a `.git/index.lock`
-conflict or partial ref state can occur.
+action with `update: 'true'` at the same time, this action serializes shared
+boilerplates database writes with an atomic lock directory next to that database.
+The lock protects `gibo update` and the optional `boilerplates-ref` checkout from
+concurrent `git clone` / `git pull` / `git checkout` writers. If another process
+holds the lock for too long, the action exits with a timeout instead of running an
+unsafe concurrent update.
 
 **Recommended mitigation for self-hosted runners:**
 
