@@ -8,6 +8,33 @@ steps:
 - uses: gitignore-in/install-gibo@main
 ```
 
+## Prerequisites
+
+The action runs as a composite `shell: bash` step. The runner must provide:
+
+| Tool | Required when | Notes |
+| --- | --- | --- |
+| `bash` | always | Used as the step shell |
+| `curl` | always | Downloads gibo release archive and checksums file from `github.com` |
+| `sha256sum` | always | Verifies archive integrity; must be GNU coreutils `sha256sum` (not macOS `shasum`) |
+| `tar` | Linux / macOS | Extracts the `.tar.gz` archive |
+| `unzip` | Windows | Extracts the `.zip` archive |
+| `git` | `update: 'true'` or `boilerplates-ref` set | `gibo update` and `boilerplates-ref` checkout both invoke `git` |
+
+**Network**: the action contacts `github.com` at two points — to download the gibo
+release archive from `simonwhitaker/gibo` and (when `update: 'true'`) to clone or
+pull `simonwhitaker/gitignore-boilerplates`. Both require outbound HTTPS and git
+transport to `github.com`. Set `update: 'false'` and restore the boilerplates
+database from `actions/cache` to eliminate the second network call.
+
+**Self-hosted runners**: `gibo update` writes `$HOME/.gitignore-boilerplates/`.
+On self-hosted runners the `$HOME` directory persists across jobs; see
+[Parallel jobs on self-hosted runners](#parallel-jobs-on-self-hosted-runners)
+for the lock-based serialization this action provides and the recommended
+caching strategy.
+
+GitHub-hosted runners satisfy all of the above requirements out of the box.
+
 ## Inputs
 
 | Input | Default | Description |
