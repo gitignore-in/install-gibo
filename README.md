@@ -5,8 +5,13 @@
 ```yaml
 steps:
 - uses: actions/checkout@v4
-- uses: gitignore-in/install-gibo@main
+- uses: gitignore-in/install-gibo@16003b5d1278dde15995459d9b4a01b146ec7798  # v0.1.0+
 ```
+
+> **Pinning**: Pin to a specific commit SHA for reproducible, supply-chain-safe usage.
+> `@main` is a mutable ref and may change without notice.
+> Check the [releases page](https://github.com/gitignore-in/install-gibo/releases) for the
+> latest tagged release, or use a commit SHA pointing to the tip of `main`.
 
 ## Prerequisites
 
@@ -62,7 +67,7 @@ byte-reproducible `gibo dump` output:
 steps:
 - uses: actions/checkout@v4
 - id: gibo
-  uses: gitignore-in/install-gibo@main
+  uses: gitignore-in/install-gibo@16003b5d1278dde15995459d9b4a01b146ec7798  # v0.1.0+
   with:
     boilerplates-ref: 0123456789abcdef0123456789abcdef01234567
 
@@ -83,7 +88,7 @@ steps:
 - uses: actions/checkout@v4
 
 - id: gibo
-  uses: gitignore-in/install-gibo@main
+  uses: gitignore-in/install-gibo@16003b5d1278dde15995459d9b4a01b146ec7798  # v0.1.0+
   with:
     update: 'false'
 
