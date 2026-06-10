@@ -10,7 +10,10 @@ inputs:
     description: |
       gibo release tag to install. Leave empty to use the version pinned
       by the action (kept up to date by the Renovate custom manager).
-      Override to install a different release.
+      Override to install a different release. Note: when overriding,
+      the checksums anchor verification is skipped — the checksums file
+      is trusted self-referentially (same release URL). See README.md
+      (Security model) for the implications.
     required: false
     default: ''
   update:
