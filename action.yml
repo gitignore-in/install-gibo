@@ -164,6 +164,7 @@ runs:
         esac
         bin_dir="${RUNNER_TEMP}/gibo/${version}/bin"
         mkdir -p "${bin_dir}"
+        trap 'rm -rf "${bin_dir}" "${tmpdir}"' EXIT
         cp "${executable}" "${bin_dir}/${executable}"
         chmod +x "${bin_dir}/${executable}"
         boilerplates_dir="$("${bin_dir}/${executable}" root)"
