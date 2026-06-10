@@ -80,8 +80,8 @@ steps:
 ## Caching the boilerplates database
 
 `gibo update` clones / pulls the upstream boilerplates database on every run.
-Pair the action with `actions/cache` and `update: 'false'` to keep that
-database across runs:
+Pair the action with `actions/cache` and a cache-populator action step to keep
+that database across runs:
 
 ```yaml
 steps:
@@ -101,9 +101,13 @@ steps:
       gibo-boilerplates-${{ steps.gibo.outputs.version }}-
 
 - if: steps.gibo-cache.outputs.cache-hit != 'true'
-  run: gibo update
-  shell: bash
+  uses: gitignore-in/install-gibo@16003b5d1278dde15995459d9b4a01b146ec7798  # v0.1.0+
 ```
+
+Keep the cache miss update inside this action rather than running
+`gibo update` in a separate shell step. The action serializes writes to the
+shared boilerplates database on self-hosted runners; an external `gibo update`
+does not use that lock.
 
 ## Concurrency notes
 
@@ -118,19 +122,21 @@ Use `outputs.bin-dir` from each step to invoke a specific version explicitly.
 ### Parallel jobs on self-hosted runners
 
 When multiple jobs run concurrently on a self-hosted runner **sharing the same user
-account**, they share `$HOME/.gitignore-boilerplates`. If two jobs both call this
-action with `update: 'true'` at the same time, this action serializes shared
-boilerplates database writes with an atomic lock directory next to that database.
-The lock protects `gibo update` and the optional `boilerplates-ref` checkout from
-concurrent `git clone` / `git pull` / `git checkout` writers. If another process
-holds the lock for too long, the action exits with a timeout instead of running an
-unsafe concurrent update.
+account**, they share `$HOME/.gitignore-boilerplates`. This action serializes access
+to the shared boilerplates database with an atomic lock directory placed next to that
+database. The lock protects against both concurrent writers (`update: 'true'` or
+`boilerplates-ref`) and the case where a writer is mid-checkout while a reader job
+would proceed to `gibo dump`. Any job that finds an existing boilerplates database
+also acquires the lock so that `gibo dump` only runs against a fully consistent
+snapshot. If another process holds the lock for too long, the action exits with a
+timeout instead of running an unsafe concurrent operation.
 
 **Recommended mitigation for self-hosted runners:**
 
 - Cache the boilerplates database and set `update: 'false'` (see [Caching](#caching-the-boilerplates-database) above).
-  Only one job — the cache populator — runs `gibo update`, and subsequent jobs
-  restore from cache without writing to the shared directory.
+  On a cache miss, call this action again as the cache populator so the update
+  uses the action's lock. Subsequent jobs restore from cache without writing to
+  the shared directory.
 - Or use [GitHub-hosted runners](https://docs.github.com/en/actions/using-github-hosted-runners/), where each job gets an isolated VM.
 
 ## Security model
