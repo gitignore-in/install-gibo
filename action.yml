@@ -157,7 +157,7 @@ runs:
 
         cleanup_gibo_update_lock() {
           if [ -n "${gibo_update_lock_dir}" ]; then
-            rmdir "${gibo_update_lock_dir}" 2>/dev/null || true
+            rm -rf "${gibo_update_lock_dir}" 2>/dev/null || true
             gibo_update_lock_dir=""
           fi
         }
@@ -174,10 +174,28 @@ runs:
         acquire_boilerplates_lock() {
           local lock_dir="${boilerplates_dir}.update.lock"
           local lock_wait_seconds=300
+          local lock_stale_seconds=600
           local lock_sleep_seconds=2
           local waited_seconds=0
+          local owner_pid="" owner_ts=0 now=0
 
           while ! mkdir "${lock_dir}" 2>/dev/null; do
+            # Detect and remove a stale lock left by a process that was
+            # killed without running its EXIT trap (e.g. SIGKILL, OOM
+            # killer, or runner timeout-minutes enforcement).
+            if [ -f "${lock_dir}/pid_ts" ]; then
+              read -r owner_pid owner_ts 2>/dev/null < "${lock_dir}/pid_ts" || true
+              owner_pid="${owner_pid:-}"
+              owner_ts="${owner_ts:-0}"
+              now=$(date +%s 2>/dev/null) || now=0
+              if { [ -n "${owner_pid}" ] && ! kill -0 "${owner_pid}" 2>/dev/null; } ||
+                 { [ "${now}" -gt 0 ] && [ "${owner_ts}" -gt 0 ] &&
+                   [ "$(( now - owner_ts ))" -ge "${lock_stale_seconds}" ]; }; then
+                echo "install-gibo: removing stale lock (owner: ${owner_pid:-unknown}): ${lock_dir}" >&2
+                rm -rf "${lock_dir}" 2>/dev/null || true
+                continue
+              fi
+            fi
             if [ "${waited_seconds}" -ge "${lock_wait_seconds}" ]; then
               echo "install-gibo: timed out waiting for gibo update lock: ${lock_dir}" >&2
               echo "install-gibo: another process may still be updating the shared boilerplates database." >&2
@@ -190,6 +208,7 @@ runs:
             waited_seconds=$((waited_seconds + lock_sleep_seconds))
           done
 
+          printf '%s %s\n' "$$" "$(date +%s)" > "${lock_dir}/pid_ts" 2>/dev/null || true
           gibo_update_lock_dir="${lock_dir}"
         }
 
