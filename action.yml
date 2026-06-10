@@ -77,6 +77,12 @@ runs:
         if [ -n "${INPUT_VERSION}" ]; then
           version="${INPUT_VERSION}"
         fi
+        # Guard against path traversal (../) and URL-special characters in version.
+        if ! printf '%s' "${version}" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
+          printf 'install-gibo: invalid version format: %s\n' "${version}" >&2
+          printf 'install-gibo: version must be a release tag like v3.0.22 (v<major>.<minor>.<patch>)\n' >&2
+          exit 1
+        fi
         executable=gibo
         case "${RUNNER_OS}-${RUNNER_ARCH}" in
           Linux-X64)
