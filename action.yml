@@ -248,7 +248,7 @@ runs:
             ;;
         esac
 
-        if [ "${INPUT_UPDATE}" = true ] || [ -n "${INPUT_BOILERPLATES_REF}" ]; then
+        if [ "${INPUT_UPDATE}" = true ] || [ -n "${INPUT_BOILERPLATES_REF}" ] || [ -d "${boilerplates_dir}" ]; then
           acquire_boilerplates_lock
         fi
 
