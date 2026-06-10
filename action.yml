@@ -30,6 +30,12 @@ inputs:
       action resolves the ref in the `gibo root` directory and checks
       it out after `gibo update`, making later `gibo dump` output
       reproducible for the selected database commit.
+
+      Use a tag name or branch name (e.g. `main`, `v1.2.3`). A bare
+      commit SHA only works when it is already present in the local
+      boilerplates database; git servers reject fetches of unadvertised
+      objects, so a bare SHA will fail when the database is empty or
+      was restored from cache without that commit.
     required: false
     default: ''
 
@@ -236,6 +242,12 @@ runs:
           fi
 
           if ! boilerplates_commit=$(git -C "${boilerplates_dir}" rev-parse --verify "${INPUT_BOILERPLATES_REF}^{commit}" 2>/dev/null); then
+            if [[ "${INPUT_BOILERPLATES_REF}" =~ ^[0-9a-f]{40}$ ]]; then
+              echo "install-gibo: boilerplates-ref '${INPUT_BOILERPLATES_REF}' is a bare commit SHA that is not present in the local database." >&2
+              echo "install-gibo: Git servers reject fetches of unadvertised objects, so bare SHAs cannot be fetched from remote." >&2
+              echo "install-gibo: Use a tag name or branch name, or run with update='true' to populate the database first." >&2
+              exit 1
+            fi
             git -C "${boilerplates_dir}" fetch --tags origin "${INPUT_BOILERPLATES_REF}"
             boilerplates_commit=$(git -C "${boilerplates_dir}" rev-parse --verify "FETCH_HEAD^{commit}")
           fi
