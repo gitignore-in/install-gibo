@@ -80,8 +80,8 @@ steps:
 ## Caching the boilerplates database
 
 `gibo update` clones / pulls the upstream boilerplates database on every run.
-Pair the action with `actions/cache` and `update: 'false'` to keep that
-database across runs:
+Pair the action with `actions/cache` and a cache-populator action step to keep
+that database across runs:
 
 ```yaml
 steps:
@@ -101,9 +101,13 @@ steps:
       gibo-boilerplates-${{ steps.gibo.outputs.version }}-
 
 - if: steps.gibo-cache.outputs.cache-hit != 'true'
-  run: gibo update
-  shell: bash
+  uses: gitignore-in/install-gibo@16003b5d1278dde15995459d9b4a01b146ec7798  # v0.1.0+
 ```
+
+Keep the cache miss update inside this action rather than running
+`gibo update` in a separate shell step. The action serializes writes to the
+shared boilerplates database on self-hosted runners; an external `gibo update`
+does not use that lock.
 
 ## Concurrency notes
 
@@ -129,8 +133,9 @@ unsafe concurrent update.
 **Recommended mitigation for self-hosted runners:**
 
 - Cache the boilerplates database and set `update: 'false'` (see [Caching](#caching-the-boilerplates-database) above).
-  Only one job — the cache populator — runs `gibo update`, and subsequent jobs
-  restore from cache without writing to the shared directory.
+  On a cache miss, call this action again as the cache populator so the update
+  uses the action's lock. Subsequent jobs restore from cache without writing to
+  the shared directory.
 - Or use [GitHub-hosted runners](https://docs.github.com/en/actions/using-github-hosted-runners/), where each job gets an isolated VM.
 
 ## Security model
