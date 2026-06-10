@@ -3,21 +3,10 @@
   "extends": [
     "local>kitsuyui/renovate-config"
   ],
-  "customManagers": [
-    {
-      // Track the gibo binary version pinned as a shell literal in action.yml.
-      // The pattern matches the line preceded by a `# renovate:` hint, so the
-      // depName and datasource live next to the version they describe and any
-      // future shell-pinned dependency can opt in by adding the same hint.
-      "customType": "regex",
-      "fileMatch": [
-        "(^|/)action\\.ya?ml$"
-      ],
-      "matchStrings": [
-        "# renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)\\s+version=(?<currentValue>v?[0-9][0-9A-Za-z.+-]*)"
-      ]
-    }
-  ],
+  // The gibo version in action.yml is intentionally not Renovate-managed.
+  // Its checksum anchors must be updated in the same reviewed commit as the
+  // version pin; a version-only Renovate PR would break or bypass the trust
+  // anchor documented in README.md.
   "packageRules": [
     {
       "description": "Manage GitHub Actions workflow updates with Renovate.",
@@ -25,16 +14,6 @@
         "github-actions"
       ],
       "groupName": "GitHub Actions"
-    },
-    {
-      "description": "Group updates to the gibo binary pinned in action.yml.",
-      "matchManagers": [
-        "custom.regex"
-      ],
-      "matchDepNames": [
-        "simonwhitaker/gibo"
-      ],
-      "groupName": "gibo"
     }
   ]
 }

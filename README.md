@@ -145,6 +145,12 @@ directly in `action.yml`. The trust anchor is therefore this repository's
 git history (commit review, branch protection) rather than the upstream
 release URL.
 
+The pinned `version` is intentionally not managed by Renovate. A version-only
+automation PR would leave the checksum anchors stale, causing either a failed
+anchor check or a tempting bypass back to self-referential trust. Update the
+default `version` and both checksum anchors together in the same reviewed
+commit.
+
 What this defends against, for the default `version`:
 
 - Upstream tag rewrite or release artifact replacement after publish

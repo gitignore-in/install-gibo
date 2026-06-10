@@ -9,8 +9,9 @@ inputs:
   version:
     description: |
       gibo release tag to install. Leave empty to use the version pinned
-      by the action (kept up to date by the Renovate custom manager).
-      Override to install a different release.
+      by the action. The pinned default and its checksum anchors are updated
+      together by reviewed commits, not by version-only automation. Override
+      to install a different release.
     required: false
     default: ''
   update:
@@ -63,14 +64,14 @@ runs:
         tmpdir=$(mktemp -d)
         trap 'rm -rf "${tmpdir}"' EXIT
         cd "${tmpdir}"
-        # renovate: datasource=github-releases depName=simonwhitaker/gibo
         version=v3.0.22
         # Anchor SHA256 of the upstream release's checksums files at the
         # pinned `version` above. Pinning these in this repo's git history
         # moves the trust anchor from "same release URL" to this commit's
         # review trail, defending against upstream tag rewrite, release
-        # artifact replacement, and TLS MITM. Must be updated whenever
-        # `version` changes; see README.md (Security model).
+        # artifact replacement, and TLS MITM. This pin is intentionally not
+        # Renovate-managed: update `version` and both checksum anchors
+        # together in the same reviewed commit. See README.md (Security model).
         checksums_txt_sha256=80f59fbfd31eac67bf7a3839909b65b28795594304dac5bae8611db0647c5d67
         checksums_windows_txt_sha256=8f41f9ad8d3f95520f23f2589eae9747f3599c5d682d9a90c2063b617787ee16
         default_version="${version}"
