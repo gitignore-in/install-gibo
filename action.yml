@@ -162,6 +162,7 @@ runs:
         chmod +x "${bin_dir}/${executable}"
         boilerplates_dir="$("${bin_dir}/${executable}" root)"
         created_boilerplates_dir=false
+        modified_boilerplates_dir=false
         gibo_update_lock_dir=""
 
         cleanup_gibo_update_lock() {
@@ -174,7 +175,7 @@ runs:
         cleanup_partial_install() {
           cleanup_gibo_update_lock
           rm -rf "${bin_dir}"
-          if [ "${created_boilerplates_dir}" = true ]; then
+          if [ "${created_boilerplates_dir}" = true ] || [ "${modified_boilerplates_dir}" = true ]; then
             rm -rf "${boilerplates_dir}"
           fi
         }
@@ -206,6 +207,7 @@ runs:
           if [ ! -e "${boilerplates_dir}" ]; then
             created_boilerplates_dir=true
           fi
+          modified_boilerplates_dir=true
           "${bin_dir}/${executable}" update
         }
 
@@ -241,6 +243,7 @@ runs:
             exit 1
           fi
 
+          modified_boilerplates_dir=true
           if ! boilerplates_commit=$(git -C "${boilerplates_dir}" rev-parse --verify "${INPUT_BOILERPLATES_REF}^{commit}" 2>/dev/null); then
             if [[ "${INPUT_BOILERPLATES_REF}" =~ ^[0-9a-f]{40}$ ]]; then
               echo "install-gibo: boilerplates-ref '${INPUT_BOILERPLATES_REF}' is a bare commit SHA that is not present in the local database." >&2
