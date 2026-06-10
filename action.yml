@@ -10,7 +10,10 @@ inputs:
     description: |
       gibo release tag to install. Leave empty to use the version pinned
       by the action (kept up to date by the Renovate custom manager).
-      Override to install a different release.
+      Override to install a different release. Note: when overriding,
+      the checksums anchor verification is skipped — the checksums file
+      is trusted self-referentially (same release URL). See README.md
+      (Security model) for the implications.
     required: false
     default: ''
   update:
@@ -30,10 +33,15 @@ inputs:
       A full 40-character commit SHA is resolved from the local
       database without a network fetch; the same SHA always points
       to the same object, so `gibo dump` output is stable across
-      runs. Branch and tag names are always fetched from upstream,
-      so `gibo dump` output tracks the current ref tip and may
-      change between runs as the ref advances. For fully reproducible
-      output, use a full commit SHA.
+      runs. For fully reproducible output, use a full commit SHA.
+      A bare SHA only works when it is already present in the local
+      boilerplates database; git servers reject fetches of
+      unadvertised objects, so a bare SHA fails when the database is
+      empty or was restored from cache without that commit. Use
+      `update: 'true'` to populate the database first if needed.
+      Branch and tag names (e.g. `main`, `v1.2.3`) are always fetched
+      from upstream, so `gibo dump` output tracks the current ref tip
+      and may change between runs as the ref advances.
     required: false
     default: ''
 
@@ -83,6 +91,12 @@ runs:
         default_version="${version}"
         if [ -n "${INPUT_VERSION}" ]; then
           version="${INPUT_VERSION}"
+        fi
+        # Guard against path traversal (../) and URL-special characters in version.
+        if ! printf '%s' "${version}" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
+          printf 'install-gibo: invalid version format: %s\n' "${version}" >&2
+          printf 'install-gibo: version must be a release tag like v3.0.22 (v<major>.<minor>.<patch>)\n' >&2
+          exit 1
         fi
         executable=gibo
         case "${RUNNER_OS}-${RUNNER_ARCH}" in
@@ -156,15 +170,17 @@ runs:
         esac
         bin_dir="${RUNNER_TEMP}/gibo/${version}/bin"
         mkdir -p "${bin_dir}"
+        trap 'rm -rf "${bin_dir}" "${tmpdir}"' EXIT
         cp "${executable}" "${bin_dir}/${executable}"
         chmod +x "${bin_dir}/${executable}"
         boilerplates_dir="$("${bin_dir}/${executable}" root)"
         created_boilerplates_dir=false
+        modified_boilerplates_dir=false
         gibo_update_lock_dir=""
 
         cleanup_gibo_update_lock() {
           if [ -n "${gibo_update_lock_dir}" ]; then
-            rmdir "${gibo_update_lock_dir}" 2>/dev/null || true
+            rm -rf "${gibo_update_lock_dir}" 2>/dev/null || true
             gibo_update_lock_dir=""
           fi
         }
@@ -172,7 +188,7 @@ runs:
         cleanup_partial_install() {
           cleanup_gibo_update_lock
           rm -rf "${bin_dir}"
-          if [ "${created_boilerplates_dir}" = true ]; then
+          if [ "${created_boilerplates_dir}" = true ] || [ "${modified_boilerplates_dir}" = true ]; then
             rm -rf "${boilerplates_dir}"
           fi
         }
@@ -181,10 +197,28 @@ runs:
         acquire_boilerplates_lock() {
           local lock_dir="${boilerplates_dir}.update.lock"
           local lock_wait_seconds=300
+          local lock_stale_seconds=600
           local lock_sleep_seconds=2
           local waited_seconds=0
+          local owner_pid="" owner_ts=0 now=0
 
           while ! mkdir "${lock_dir}" 2>/dev/null; do
+            # Detect and remove a stale lock left by a process that was
+            # killed without running its EXIT trap (e.g. SIGKILL, OOM
+            # killer, or runner timeout-minutes enforcement).
+            if [ -f "${lock_dir}/pid_ts" ]; then
+              read -r owner_pid owner_ts 2>/dev/null < "${lock_dir}/pid_ts" || true
+              owner_pid="${owner_pid:-}"
+              owner_ts="${owner_ts:-0}"
+              now=$(date +%s 2>/dev/null) || now=0
+              if { [ -n "${owner_pid}" ] && ! kill -0 "${owner_pid}" 2>/dev/null; } ||
+                 { [ "${now}" -gt 0 ] && [ "${owner_ts}" -gt 0 ] &&
+                   [ "$(( now - owner_ts ))" -ge "${lock_stale_seconds}" ]; }; then
+                echo "install-gibo: removing stale lock (owner: ${owner_pid:-unknown}): ${lock_dir}" >&2
+                rm -rf "${lock_dir}" 2>/dev/null || true
+                continue
+              fi
+            fi
             if [ "${waited_seconds}" -ge "${lock_wait_seconds}" ]; then
               echo "install-gibo: timed out waiting for gibo update lock: ${lock_dir}" >&2
               echo "install-gibo: another process may still be updating the shared boilerplates database." >&2
@@ -197,6 +231,7 @@ runs:
             waited_seconds=$((waited_seconds + lock_sleep_seconds))
           done
 
+          printf '%s %s\n' "$$" "$(date +%s)" > "${lock_dir}/pid_ts" 2>/dev/null || true
           gibo_update_lock_dir="${lock_dir}"
         }
 
@@ -204,6 +239,7 @@ runs:
           if [ ! -e "${boilerplates_dir}" ]; then
             created_boilerplates_dir=true
           fi
+          modified_boilerplates_dir=true
           "${bin_dir}/${executable}" update
         }
 
@@ -213,12 +249,12 @@ runs:
           false)
             ;;
           *)
-            echo "inputs.update must be 'true' or 'false'; got '${INPUT_UPDATE}'." >&2
+            printf "inputs.update must be 'true' or 'false'; got '%s'.\n" "$(printf '%s' "${INPUT_UPDATE}" | tr -d '\n\r')" >&2
             exit 1
             ;;
         esac
 
-        if [ "${INPUT_UPDATE}" = true ] || [ -n "${INPUT_BOILERPLATES_REF}" ]; then
+        if [ "${INPUT_UPDATE}" = true ] || [ -n "${INPUT_BOILERPLATES_REF}" ] || [ -d "${boilerplates_dir}" ]; then
           acquire_boilerplates_lock
         fi
 
@@ -239,13 +275,18 @@ runs:
             exit 1
           fi
 
+          modified_boilerplates_dir=true
           if printf '%s' "${INPUT_BOILERPLATES_REF}" | grep -qE '^[0-9a-f]{40}$'; then
             # Immutable SHA: resolve from the local database without a fetch.
             # The same SHA always points to the same object regardless of when
             # or where the action runs, so local resolution is correct.
             if ! boilerplates_commit=$(git -C "${boilerplates_dir}" rev-parse --verify "${INPUT_BOILERPLATES_REF}^{commit}" 2>/dev/null); then
-              git -C "${boilerplates_dir}" fetch --tags origin "${INPUT_BOILERPLATES_REF}"
-              boilerplates_commit=$(git -C "${boilerplates_dir}" rev-parse --verify "FETCH_HEAD^{commit}")
+              # Git servers reject fetches of unadvertised objects, so a bare
+              # SHA cannot be fetched from remote when it is missing locally.
+              echo "install-gibo: boilerplates-ref '${INPUT_BOILERPLATES_REF}' is a bare commit SHA that is not present in the local database." >&2
+              echo "install-gibo: Git servers reject fetches of unadvertised objects, so bare SHAs cannot be fetched from remote." >&2
+              echo "install-gibo: Use a tag name or branch name, or run with update='true' to populate the database first." >&2
+              exit 1
             fi
           else
             # Mutable ref (branch or tag): always fetch from upstream so the
