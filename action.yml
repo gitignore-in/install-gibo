@@ -243,7 +243,7 @@ runs:
           false)
             ;;
           *)
-            echo "inputs.update must be 'true' or 'false'; got '${INPUT_UPDATE}'." >&2
+            printf "inputs.update must be 'true' or 'false'; got '%s'.\n" "$(printf '%s' "${INPUT_UPDATE}" | tr -d '\n\r')" >&2
             exit 1
             ;;
         esac
