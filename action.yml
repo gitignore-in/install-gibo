@@ -27,6 +27,13 @@ inputs:
       action resolves the ref in the `gibo root` directory and checks
       it out after `gibo update`, making later `gibo dump` output
       reproducible for the selected database commit.
+      A full 40-character commit SHA is resolved from the local
+      database without a network fetch; the same SHA always points
+      to the same object, so `gibo dump` output is stable across
+      runs. Branch and tag names are always fetched from upstream,
+      so `gibo dump` output tracks the current ref tip and may
+      change between runs as the ref advances. For fully reproducible
+      output, use a full commit SHA.
     required: false
     default: ''
 
@@ -232,7 +239,18 @@ runs:
             exit 1
           fi
 
-          if ! boilerplates_commit=$(git -C "${boilerplates_dir}" rev-parse --verify "${INPUT_BOILERPLATES_REF}^{commit}" 2>/dev/null); then
+          if printf '%s' "${INPUT_BOILERPLATES_REF}" | grep -qE '^[0-9a-f]{40}$'; then
+            # Immutable SHA: resolve from the local database without a fetch.
+            # The same SHA always points to the same object regardless of when
+            # or where the action runs, so local resolution is correct.
+            if ! boilerplates_commit=$(git -C "${boilerplates_dir}" rev-parse --verify "${INPUT_BOILERPLATES_REF}^{commit}" 2>/dev/null); then
+              git -C "${boilerplates_dir}" fetch --tags origin "${INPUT_BOILERPLATES_REF}"
+              boilerplates_commit=$(git -C "${boilerplates_dir}" rev-parse --verify "FETCH_HEAD^{commit}")
+            fi
+          else
+            # Mutable ref (branch or tag): always fetch from upstream so the
+            # action resolves the current ref tip rather than a stale local
+            # cache, making gibo dump output consistent across runs.
             git -C "${boilerplates_dir}" fetch --tags origin "${INPUT_BOILERPLATES_REF}"
             boilerplates_commit=$(git -C "${boilerplates_dir}" rev-parse --verify "FETCH_HEAD^{commit}")
           fi
