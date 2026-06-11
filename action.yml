@@ -172,6 +172,7 @@ runs:
         created_boilerplates_dir=false
         modified_boilerplates_dir=false
         gibo_update_lock_dir=""
+        install_succeeded=false
 
         cleanup_gibo_update_lock() {
           if [ -n "${gibo_update_lock_dir}" ]; then
@@ -182,9 +183,11 @@ runs:
 
         cleanup_partial_install() {
           cleanup_gibo_update_lock
-          rm -rf "${bin_dir}"
-          if [ "${created_boilerplates_dir}" = true ] || [ "${modified_boilerplates_dir}" = true ]; then
-            rm -rf "${boilerplates_dir}"
+          if [ "${install_succeeded}" != "true" ]; then
+            rm -rf "${bin_dir}"
+            if [ "${created_boilerplates_dir}" = true ] || [ "${modified_boilerplates_dir}" = true ]; then
+              rm -rf "${boilerplates_dir}"
+            fi
           fi
         }
         trap 'cleanup_partial_install; rm -rf "${tmpdir}"' EXIT
@@ -293,6 +296,7 @@ runs:
           echo "::notice::install-gibo: boilerplates-ref is not set; gibo dump output is non-deterministic and may change between runs. To make this run reproducible, set boilerplates-ref: ${boilerplates_commit}"
         fi
 
+        install_succeeded=true
         {
           echo "version=${version}"
           echo "bin-dir=${bin_dir}"
@@ -300,7 +304,6 @@ runs:
           echo "boilerplates-commit=${boilerplates_commit}"
         } >> "${GITHUB_OUTPUT}"
         echo "${bin_dir}" >> "${GITHUB_PATH}"
-        trap 'rm -rf "${tmpdir}"' EXIT
       shell: bash
       env:
         INPUT_VERSION: ${{ inputs.version }}
