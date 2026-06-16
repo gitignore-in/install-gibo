@@ -46,7 +46,7 @@ GitHub-hosted runners satisfy all of the above requirements out of the box.
 | --- | --- | --- |
 | `version` | (action pin) | gibo release tag (e.g. `v3.0.22`). Leave empty to use the version pinned by the action. |
 | `update` | `'true'` | Run `gibo update` after install. Set to `'false'` to skip the unconditional database refresh, e.g. when caching the boilerplates database externally. |
-| `boilerplates-ref` | `''` | Optional git ref to check out in the boilerplates database after `gibo update`. Use a commit SHA to make later `gibo dump` output reproducible. |
+| `boilerplates-ref` | `''` | Optional git ref to check out in the boilerplates database. With `update: 'true'`, the action updates before checkout; with `update: 'false'`, it checks out from the database already present on the runner. Use a commit SHA to make later `gibo dump` output reproducible. |
 
 ## Outputs
 
@@ -61,7 +61,9 @@ GitHub-hosted runners satisfy all of the above requirements out of the box.
 
 By default, `gibo update` follows the current upstream boilerplates database
 HEAD. Pin `boilerplates-ref` to a commit SHA when downstream steps need
-byte-reproducible `gibo dump` output:
+byte-reproducible `gibo dump` output. The checkout runs after any requested
+update, or from the database already present on the runner when `update` is
+`'false'`:
 
 ```yaml
 steps:

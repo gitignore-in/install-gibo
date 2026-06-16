@@ -29,8 +29,11 @@ inputs:
     description: |
       Optional git ref for the boilerplates database. When set, the
       action resolves the ref in the `gibo root` directory and checks
-      it out after `gibo update`, making later `gibo dump` output
-      reproducible for the selected database commit.
+      it out before reporting outputs. With `update: 'true'`, the
+      checkout happens after `gibo update`; with `update: 'false'`,
+      it uses the database already present on the runner. This makes
+      later `gibo dump` output reproducible for the selected database
+      commit.
       A full 40-character commit SHA is resolved from the local
       database without a network fetch; the same SHA always points
       to the same object, so `gibo dump` output is stable across
