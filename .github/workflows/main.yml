@@ -1,4 +1,4 @@
-name: Example
+name: CI
 on:
   pull_request:
   push:
@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 jobs:
-  example:
+  ci:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
