@@ -1,5 +1,9 @@
 # GitHub Action for Install gibo
 
+## Documentation
+
+- [Release process](docs/release.md)
+
 ## Usage
 
 ```yaml
