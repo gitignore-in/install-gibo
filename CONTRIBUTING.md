@@ -2,20 +2,22 @@
 
 ## Bumping the pinned gibo version
 
-When Renovate (or a manual PR) bumps the `version` in `action.yml`, the two
-SHA256 anchor values must be updated in the same commit.
+When manually bumping the `version` in `action.yml`, the two SHA256 anchor
+values must be updated in the same commit. The gibo version is intentionally
+not Renovate-managed: updating the version and both checksum anchors in the
+same reviewed commit is a security requirement (see `README.md` — Security
+model and `.github/renovate.json5`).
 
 `action.yml` pins:
 
 ```sh
-# renovate: datasource=github-releases depName=simonwhitaker/gibo
 version=v3.0.22
 checksums_txt_sha256=<SHA256 of upstream checksums.txt for v3.0.22>
 checksums_windows_txt_sha256=<SHA256 of upstream checksums.windows.txt for v3.0.22>
 ```
 
-Renovate's custom manager updates only the `version` line. The SHA256 values
-must be updated manually to match the new release.
+All three values (`version`, `checksums_txt_sha256`, `checksums_windows_txt_sha256`)
+must be updated manually in the same commit.
 
 ### Step-by-step
 
@@ -40,10 +42,7 @@ On macOS `sha256sum` is not installed by default; use
 Update `action.yml` with the three new values:
 
 ```sh
-# version line (already done by Renovate if this is a Renovate PR):
 version=<new-version>
-
-# anchor SHA256 values (must be updated manually):
 checksums_txt_sha256=<output of sha256sum checksums.txt, first field only>
 checksums_windows_txt_sha256=<output of sha256sum checksums.windows.txt, first field only>
 ```
