@@ -217,6 +217,7 @@ runs:
               now=$(date +%s 2>/dev/null) || now=0
               if { [ -n "${owner_pid}" ] && ! kill -0 "${owner_pid}" 2>/dev/null; } ||
                  { [ "${now}" -gt 0 ] && [ "${owner_ts}" -gt 0 ] &&
+                   [ "${now}" -ge "${owner_ts}" ] &&
                    [ "$(( now - owner_ts ))" -ge "${lock_stale_seconds}" ]; }; then
                 echo "install-gibo: removing stale lock (owner: ${owner_pid:-unknown}): ${lock_dir}" >&2
                 rm -rf "${lock_dir}" 2>/dev/null || true
