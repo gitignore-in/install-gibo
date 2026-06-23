@@ -280,7 +280,7 @@ runs:
           fi
 
           modified_boilerplates_dir=true
-          if printf '%s' "${INPUT_BOILERPLATES_REF}" | grep -qE '^[0-9a-f]{40}$'; then
+          if printf '%s' "${INPUT_BOILERPLATES_REF}" | grep -qE '^[0-9a-fA-F]{40}$'; then
             # Immutable SHA: resolve from the local database without a fetch.
             # The same SHA always points to the same object regardless of when
             # or where the action runs, so local resolution is correct.
