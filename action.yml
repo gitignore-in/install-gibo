@@ -11,8 +11,9 @@ inputs:
       gibo release tag to install. Leave empty to use the version pinned
       by the action. The pinned default and its checksum anchors are updated
       together by reviewed commits, not by version-only automation. Override
-      to install a different release. Note: when overriding, the checksums
-      anchor verification is skipped — the checksums file is trusted
+      to install a different release. Accepts stable semver (e.g. v3.0.22)
+      and pre-release semver (e.g. v4.0.0-rc.1). Note: when overriding, the
+      checksums anchor verification is skipped — the checksums file is trusted
       self-referentially (same release URL). See README.md (Security model)
       for the implications.
     required: false
@@ -94,9 +95,10 @@ runs:
           version="${INPUT_VERSION}"
         fi
         # Guard against path traversal (../) and URL-special characters in version.
-        if ! printf '%s' "${version}" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
+        # Accepts stable semver (v1.2.3) and pre-release semver (v1.2.3-rc.1).
+        if ! printf '%s' "${version}" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.-]+)?$'; then
           printf 'install-gibo: invalid version format: %s\n' "${version}" >&2
-          printf 'install-gibo: version must be a release tag like v3.0.22 (v<major>.<minor>.<patch>)\n' >&2
+          printf 'install-gibo: version must be a release tag like v3.0.22 or v4.0.0-rc.1\n' >&2
           exit 1
         fi
         executable=gibo
