@@ -298,7 +298,10 @@ runs:
             # Mutable ref (branch or tag): always fetch from upstream so the
             # action resolves the current ref tip rather than a stale local
             # cache, making gibo dump output consistent across runs.
-            git -C "${boilerplates_dir}" fetch --tags origin "${INPUT_BOILERPLATES_REF}"
+            # timeout 60: mirrors the --max-time 30 used for curl downloads;
+            # git has no built-in command-level timeout, so we wrap the call to
+            # prevent a TCP hang from blocking the job for hours.
+            timeout 60 git -C "${boilerplates_dir}" fetch --tags origin "${INPUT_BOILERPLATES_REF}"
             boilerplates_commit=$(git -C "${boilerplates_dir}" rev-parse --verify "FETCH_HEAD^{commit}")
           fi
           git -C "${boilerplates_dir}" checkout --detach "${boilerplates_commit}"
