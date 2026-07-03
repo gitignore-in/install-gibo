@@ -181,6 +181,7 @@ runs:
         trap 'rm -rf "${bin_dir}" "${tmpdir}"' EXIT
         cp "${executable}" "${bin_dir}/${executable}"
         chmod +x "${bin_dir}/${executable}"
+        "${bin_dir}/${executable}" version >&2
         boilerplates_dir="$("${bin_dir}/${executable}" root)"
         created_boilerplates_dir=false
         modified_boilerplates_dir=false
