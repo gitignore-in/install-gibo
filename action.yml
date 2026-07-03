@@ -214,7 +214,7 @@ runs:
               read -r owner_pid owner_ts 2>/dev/null < "${lock_dir}/pid_ts" || true
               owner_pid="${owner_pid:-}"
               owner_ts="${owner_ts:-0}"
-              now=$(date +%s 2>/dev/null) || now=0
+              now=${EPOCHSECONDS:-$(date +%s 2>/dev/null || echo 0)}
               if { [ -n "${owner_pid}" ] && ! kill -0 "${owner_pid}" 2>/dev/null; } ||
                  { [ "${now}" -gt 0 ] && [ "${owner_ts}" -gt 0 ] &&
                    [ "$(( now - owner_ts ))" -ge "${lock_stale_seconds}" ]; }; then
