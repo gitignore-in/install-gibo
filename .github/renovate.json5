@@ -13,13 +13,7 @@
       "matchManagers": [
         "github-actions"
       ],
-      "groupName": "GitHub Actions",
-      // Override the shared config's internalChecksFilter from "strict" to "warn".
-      // With "strict", a stuck renovate/stability-days PENDING status permanently
-      // blocks the PR (mergeStateStatus: UNSTABLE) even after the minimumReleaseAge
-      // quarantine window has passed and Renovate has not re-evaluated. "warn" keeps
-      // the stability-days signal visible without letting it block auto-merge.
-      "internalChecksFilter": "warn"
+      "groupName": "GitHub Actions"
     }
   ]
 }
