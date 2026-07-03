@@ -235,7 +235,9 @@ runs:
             waited_seconds=$((waited_seconds + lock_sleep_seconds))
           done
 
-          printf '%s %s\n' "$$" "$(date +%s)" > "${lock_dir}/pid_ts" 2>/dev/null || true
+          if ! printf '%s %s\n' "$$" "$(date +%s)" > "${lock_dir}/pid_ts"; then
+            echo "install-gibo: warning: failed to write lock metadata (${lock_dir}/pid_ts); stale lock detection will be unavailable" >&2
+          fi
           gibo_update_lock_dir="${lock_dir}"
         }
 
