@@ -61,10 +61,9 @@ outputs:
     value: ${{ steps.install.outputs.bin-dir }}
   boilerplates-dir:
     description: |
-      Directory where gibo stores its boilerplates database (the target
-      of `gibo update`, as reported by `gibo root`). Useful as the
-      `path` of an `actions/cache` step that caches the database across
-      runs.
+      Directory where gibo stores its boilerplates database, as reported
+      by `gibo root`. Set whenever gibo is present; empty when no
+      database exists. Useful as the `path` of an `actions/cache` step.
     value: ${{ steps.install.outputs.boilerplates-dir }}
   boilerplates-commit:
     description: |
@@ -72,6 +71,19 @@ outputs:
       present. Empty when the action did not create or restore the
       database.
     value: ${{ steps.install.outputs.boilerplates-commit }}
+  update-performed:
+    description: |
+      'true' when `gibo update` was invoked in this action run,
+      'false' otherwise (e.g. when `inputs.update` is 'false' or the
+      database was restored from cache). Use this output to conditionally
+      save an `actions/cache` entry only when the database changed.
+    value: ${{ steps.install.outputs.update-performed }}
+  boilerplates-created:
+    description: |
+      'true' when the boilerplates database directory did not exist
+      before this run and was created by `gibo update`. 'false' when
+      the directory already existed or `gibo update` was not invoked.
+    value: ${{ steps.install.outputs.boilerplates-created }}
 
 runs:
   using: composite
@@ -192,6 +204,7 @@ runs:
         boilerplates_dir="$("${bin_dir}/${executable}" root)"
         created_boilerplates_dir=false
         modified_boilerplates_dir=false
+        gibo_update_ran=false
         gibo_update_lock_dir=""
         install_succeeded=false
         gibo_update_succeeded=false
@@ -267,6 +280,7 @@ runs:
             created_boilerplates_dir=true
           fi
           modified_boilerplates_dir=true
+          gibo_update_ran=true
           "${bin_dir}/${executable}" update
           gibo_update_succeeded=true
         }
@@ -344,6 +358,8 @@ runs:
           echo "bin-dir=${bin_dir}"
           echo "boilerplates-dir=${boilerplates_dir}"
           echo "boilerplates-commit=${boilerplates_commit}"
+          echo "update-performed=${gibo_update_ran}"
+          echo "boilerplates-created=${created_boilerplates_dir}"
         } >> "${GITHUB_OUTPUT}"
         echo "${bin_dir}" >> "${GITHUB_PATH}"
       shell: bash
