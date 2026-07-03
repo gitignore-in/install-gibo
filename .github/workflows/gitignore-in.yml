@@ -6,13 +6,14 @@ on:
     # daily at 00:00
     - cron: '0 0 * * *'
 
-permissions:
-  contents: write
-  pull-requests: write
+permissions: {}
 
 jobs:
   update-gitignore:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: write
+      pull-requests: write
     steps:
       - uses: gitignore-in/gh-action@98ab8a7225c88b81167bfef156dbad83c554aaf4
