@@ -190,7 +190,11 @@ runs:
 
         cleanup_gibo_update_lock() {
           if [ -n "${gibo_update_lock_dir}" ]; then
-            rm -rf "${gibo_update_lock_dir}" 2>/dev/null || true
+            local lock_pid=""
+            read -r lock_pid _ 2>/dev/null < "${gibo_update_lock_dir}/pid_ts" || true
+            if [ "${lock_pid:-}" = "$$" ]; then
+              rm -rf "${gibo_update_lock_dir}" 2>/dev/null || true
+            fi
             gibo_update_lock_dir=""
           fi
         }
