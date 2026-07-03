@@ -139,8 +139,12 @@ runs:
             ;;
         esac
         release_url="https://github.com/simonwhitaker/gibo/releases/download/${version}"
-        curl -fsSLO --retry 3 --retry-delay 2 --connect-timeout 10 --max-time 30 "${release_url}/${target}"
-        curl -fsSLO --retry 3 --retry-delay 2 --connect-timeout 10 --max-time 30 "${release_url}/${checksums}"
+        curl_retry=3
+        curl_retry_delay_seconds=2
+        curl_connect_timeout_seconds=10
+        curl_max_time_seconds=30
+        curl -fsSLO --retry "${curl_retry}" --retry-delay "${curl_retry_delay_seconds}" --connect-timeout "${curl_connect_timeout_seconds}" --max-time "${curl_max_time_seconds}" "${release_url}/${target}"
+        curl -fsSLO --retry "${curl_retry}" --retry-delay "${curl_retry_delay_seconds}" --connect-timeout "${curl_connect_timeout_seconds}" --max-time "${curl_max_time_seconds}" "${release_url}/${checksums}"
         if [ "${version}" = "${default_version}" ]; then
           echo "${checksums_anchor}  ${checksums}" | sha256sum --check -
         else
