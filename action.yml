@@ -79,6 +79,13 @@ runs:
     - id: install
       run: |
         set -euo pipefail
+        sha256_verify() {
+          if command -v sha256sum >/dev/null 2>&1; then
+            sha256sum --check "$@"
+          else
+            shasum -a 256 --check "$@"
+          fi
+        }
         tmpdir=$(mktemp -d)
         trap 'rm -rf "${tmpdir}"' EXIT
         cd "${tmpdir}"
@@ -149,21 +156,21 @@ runs:
         curl -fsSLO --retry "${curl_retry}" --retry-delay "${curl_retry_delay_seconds}" --connect-timeout "${curl_connect_timeout_seconds}" --max-time "${curl_max_time_seconds}" "${release_url}/${target}"
         curl -fsSLO --retry "${curl_retry}" --retry-delay "${curl_retry_delay_seconds}" --connect-timeout "${curl_connect_timeout_seconds}" --max-time "${curl_max_time_seconds}" "${release_url}/${checksums}"
         if [ "${version}" = "${default_version}" ]; then
-          echo "${checksums_anchor}  ${checksums}" | sha256sum --check -
+          echo "${checksums_anchor}  ${checksums}" | sha256_verify -
         else
           echo "install-gibo: inputs.version='${version}' differs from the action-pinned default '${default_version}'." >&2
           echo "install-gibo: anchor verification is skipped; the checksums file is trusted self-referentially (same release URL as the archive)." >&2
           echo "install-gibo: see README.md (Security model) for the implications." >&2
         fi
-        if ! grep -qF "  ${target}" "${checksums}"; then
+        if ! awk -v t="${target}" '$2 == t {found=1} END {exit !found}' "${checksums}"; then
           echo "install-gibo: checksum entry for '${target}' not found in '${checksums}'." >&2
           echo "install-gibo: this usually means the checksums file format has changed upstream." >&2
           echo "install-gibo: checksums file contents:" >&2
           cat "${checksums}" >&2
           exit 1
         fi
-        grep -F "  ${target}" "${checksums}" > "${target}.sha256"
-        sha256sum --check "${target}.sha256"
+        awk -v t="${target}" '$2 == t' "${checksums}" > "${target}.sha256"
+        sha256_verify "${target}.sha256"
         case "${target}" in
           *.tar.gz)
             tar -xzf "${target}"
