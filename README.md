@@ -83,6 +83,13 @@ steps:
   shell: bash
 ```
 
+When `update` is `'true'` and `boilerplates-ref` is empty, the action emits a
+GitHub Actions notice that includes the resolved `boilerplates-commit`. The
+notice is informational: the action succeeded, but later `gibo dump` output can
+change when the upstream boilerplates database changes. Set `boilerplates-ref`
+to the reported commit, or any other intended boilerplates commit, to make the
+run reproducible and suppress the notice.
+
 ## Caching the boilerplates database
 
 `gibo update` clones / pulls the upstream boilerplates database on every run.
