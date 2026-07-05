@@ -1,5 +1,7 @@
 # GitHub Action for Install gibo
 
+<!-- markdownlint-disable MD013 -->
+
 ## Documentation
 
 - [Release process](docs/release.md)
