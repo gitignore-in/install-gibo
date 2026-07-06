@@ -205,11 +205,9 @@ runs:
         "${bin_dir}/${executable}" version >&2
         boilerplates_dir="$("${bin_dir}/${executable}" root)"
         created_boilerplates_dir=false
-        modified_boilerplates_dir=false
         gibo_update_ran=false
         gibo_update_lock_dir=""
         install_succeeded=false
-        gibo_update_succeeded=false
 
         cleanup_gibo_update_lock() {
           if [ -n "${gibo_update_lock_dir}" ]; then
@@ -226,8 +224,10 @@ runs:
           cleanup_gibo_update_lock
           if [ "${install_succeeded}" != "true" ]; then
             rm -rf "${bin_dir}"
-            if { [ "${created_boilerplates_dir}" = true ] || [ "${modified_boilerplates_dir}" = true ]; } &&
-               [ "${gibo_update_succeeded}" != "true" ]; then
+            # Keep an existing shared boilerplates cache on partial failure so
+            # the next run can reuse it. Only remove the directory when this run
+            # created it from scratch.
+            if [ "${created_boilerplates_dir}" = true ]; then
               rm -rf "${boilerplates_dir}"
             fi
           fi
@@ -282,10 +282,8 @@ runs:
           if [ ! -e "${boilerplates_dir}" ]; then
             created_boilerplates_dir=true
           fi
-          modified_boilerplates_dir=true
           gibo_update_ran=true
           "${bin_dir}/${executable}" update
-          gibo_update_succeeded=true
         }
 
         case "${INPUT_UPDATE}" in
@@ -320,7 +318,6 @@ runs:
             exit 1
           fi
 
-          modified_boilerplates_dir=true
           if printf '%s' "${INPUT_BOILERPLATES_REF}" | grep -qE '^[0-9a-fA-F]{40}$'; then
             # Immutable SHA: resolve from the local database without a fetch.
             # The same SHA always points to the same object regardless of when
