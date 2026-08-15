@@ -62,6 +62,14 @@ GitHub-hosted runners satisfy all of the above requirements out of the box.
 | `bin-dir` | Directory containing the gibo executable (already on `PATH`). |
 | `boilerplates-dir` | Directory where gibo stores its boilerplates database, as reported by `gibo root`. |
 | `boilerplates-commit` | Resolved commit of the boilerplates database, when present. |
+| `update-performed` | `'true'` when `gibo update` was invoked in this action run, `'false'` otherwise. |
+| `boilerplates-created` | `'true'` when `boilerplates-dir` did not exist before the run and this action created it, `'false'` otherwise. |
+
+### Contract notes
+
+- `version`, `bin-dir`, and `boilerplates-dir` are always set to strings (may be empty depending on runtime state).
+- `boilerplates-created` is useful to detect a cache miss recovery path.
+- `update-performed` is useful to avoid rebuilding cache when `update: 'false'` and the boilerplates database is already present.
 
 ## Pinning the boilerplates database
 
@@ -123,6 +131,16 @@ Keep the cache miss update inside this action rather than running
 `gibo update` in a separate shell step. The action serializes writes to the
 shared boilerplates database on self-hosted runners; an external `gibo update`
 does not use that lock.
+
+You can use the status outputs to avoid unnecessary cache writes:
+
+```yaml
+- if: steps.gibo.outputs.update-performed == 'true'
+  uses: actions/cache/save@v4
+  with:
+    path: ${{ steps.gibo.outputs.boilerplates-dir }}
+    key: gibo-boilerplates-${{ steps.gibo.outputs.version }}-${{ steps.gibo.outputs.boilerplates-commit }}
+```
 
 ## Concurrency notes
 
