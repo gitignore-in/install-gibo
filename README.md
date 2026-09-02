@@ -159,10 +159,19 @@ account**, they share `$HOME/.gitignore-boilerplates`. This action serializes ac
 to the shared boilerplates database with an atomic lock directory placed next to that
 database. The lock protects against both concurrent writers (`update: 'true'` or
 `boilerplates-ref`) and the case where a writer is mid-checkout while a reader job
-would proceed to `gibo dump`. Any job that finds an existing boilerplates database
-also acquires the lock so that `gibo dump` only runs against a fully consistent
-snapshot. If another process holds the lock for too long, the action exits with a
-timeout instead of running an unsafe concurrent operation.
+would proceed to read the database. Any job that finds an existing boilerplates
+database also acquires the lock, so the database is internally consistent by the
+time this action's step finishes. If another process holds the lock for too long,
+the action exits with a timeout instead of running an unsafe concurrent operation.
+
+**The lock is released when this action's step ends, before your workflow's next
+step runs.** If you invoke `gibo dump` in a *later* step (as the [usage
+examples](#pinning-the-boilerplates-database) above do), that call is **not**
+protected by the lock: another concurrent job on the same self-hosted runner user
+account can start writing to the shared database in the gap between this action's
+step finishing and your `gibo dump` step running, so the snapshot `gibo dump` reads
+can still change between runs. This action cannot extend the lock across a step
+boundary it does not control.
 
 **Recommended mitigation for self-hosted runners:**
 
@@ -170,6 +179,9 @@ timeout instead of running an unsafe concurrent operation.
   On a cache miss, call this action again as the cache populator so the update
   uses the action's lock. Subsequent jobs restore from cache without writing to
   the shared directory.
+- Use a workflow- or job-level [`concurrency`](https://docs.github.com/en/actions/using-jobs/using-concurrency)
+  group scoped to the runner's shared state so that no other job touching
+  `$HOME/.gitignore-boilerplates` can start while your `gibo dump` step is running.
 - Or use [GitHub-hosted runners](https://docs.github.com/en/actions/using-github-hosted-runners/), where each job gets an isolated VM.
 
 ## Security model
