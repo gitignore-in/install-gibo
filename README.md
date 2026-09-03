@@ -159,10 +159,18 @@ account**, they share `$HOME/.gitignore-boilerplates`. This action serializes ac
 to the shared boilerplates database with an atomic lock directory placed next to that
 database. The lock protects against both concurrent writers (`update: 'true'` or
 `boilerplates-ref`) and the case where a writer is mid-checkout while a reader job
-would proceed to `gibo dump`. Any job that finds an existing boilerplates database
-also acquires the lock so that `gibo dump` only runs against a fully consistent
-snapshot. If another process holds the lock for too long, the action exits with a
-timeout instead of running an unsafe concurrent operation.
+would proceed to read the database. Any job that finds an existing boilerplates
+database also acquires the lock while it inspects that database, so the database is
+in a fully consistent state for as long as this action's own step is running.
+
+The lock is released before this action's step ends (it must be, so a later step in
+the same job — or a concurrent job — is never blocked indefinitely on it). If your
+workflow calls `gibo dump` (or any other read of the database) in a **separate step
+after** this action, that later read is not covered by the lock: a concurrent job on
+the same self-hosted runner user account can start writing to the shared database in
+the gap between this action's step finishing and your later step running. If another
+process holds the lock for too long while this action's own step is running, the
+action exits with a timeout instead of running an unsafe concurrent operation.
 
 **Recommended mitigation for self-hosted runners:**
 
@@ -170,6 +178,10 @@ timeout instead of running an unsafe concurrent operation.
   On a cache miss, call this action again as the cache populator so the update
   uses the action's lock. Subsequent jobs restore from cache without writing to
   the shared directory.
+- Add a `concurrency:` group to the workflow (or job) so only one job at a time can
+  run the update-then-read sequence on a given self-hosted runner user account. This
+  is the only way to protect a `gibo dump` step that runs after this action, since
+  the action's lock cannot extend across a step boundary it does not control.
 - Or use [GitHub-hosted runners](https://docs.github.com/en/actions/using-github-hosted-runners/), where each job gets an isolated VM.
 
 ## Security model
