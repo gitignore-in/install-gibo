@@ -348,7 +348,7 @@ runs:
         fi
         cleanup_gibo_update_lock
 
-        if [ "${INPUT_UPDATE}" = true ] && [ -z "${INPUT_BOILERPLATES_REF}" ] && [ -n "${boilerplates_commit}" ]; then
+        if [ -z "${INPUT_BOILERPLATES_REF}" ] && [ -n "${boilerplates_commit}" ]; then
           echo "::notice::install-gibo: boilerplates-ref is not set; gibo dump output is non-deterministic and may change between runs. To make this run reproducible, set boilerplates-ref: ${boilerplates_commit}"
         fi
 
