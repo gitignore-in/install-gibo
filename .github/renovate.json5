@@ -3,7 +3,7 @@
   "extends": [
     "local>kitsuyui/renovate-config"
   ],
-  // The gibo version in action.yml is intentionally not Renovate-managed.
+  // The gibo version in scripts/install.sh is intentionally not Renovate-managed.
   // Its checksum anchors must be updated in the same reviewed commit as the
   // version pin; a version-only Renovate PR would break or bypass the trust
   // anchor documented in README.md.

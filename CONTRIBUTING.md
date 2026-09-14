@@ -2,13 +2,13 @@
 
 ## Bumping the pinned gibo version
 
-When manually bumping the `version` in `action.yml`, the two SHA256 anchor
+When manually bumping the `version` in `scripts/install.sh`, the two SHA256 anchor
 values must be updated in the same commit. The gibo version is intentionally
 not Renovate-managed: updating the version and both checksum anchors in the
 same reviewed commit is a security requirement (see `README.md` — Security
 model and `.github/renovate.json5`).
 
-`action.yml` pins:
+`scripts/install.sh` pins:
 
 ```sh
 version=v3.0.22
@@ -39,7 +39,7 @@ sha256sum checksums.windows.txt  # → new checksums_windows_txt_sha256
 On macOS `sha256sum` is not installed by default; use
 `shasum -a 256 checksums.txt` instead, or install `coreutils` via Homebrew.
 
-Update `action.yml` with the three new values:
+Update `scripts/install.sh` with the three new values:
 
 ```sh
 version=<new-version>
@@ -60,7 +60,7 @@ verification step to fail on the first CI run after the bump.
 
 ### Verifying the update locally
 
-After editing `action.yml`, confirm the new anchor matches:
+After editing `scripts/install.sh`, confirm the new anchor matches:
 
 ```sh
 echo "<new-checksums_txt_sha256>  checksums.txt" | sha256sum --check -

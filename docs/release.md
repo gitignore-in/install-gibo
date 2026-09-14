@@ -44,9 +44,10 @@ changes the action behavior seen by users.
 
    ```console
    git diff --check
-   typos README.md docs/release.md action.yml .github/workflows/*.yml
+   typos README.md docs/release.md action.yml scripts/*.sh .github/workflows/*.yml
    npx --yes markdownlint-cli2 README.md docs/release.md
    go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12 -color
+   shellcheck scripts/*.sh
    ```
 
 5. Draft release notes that include:

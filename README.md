@@ -195,7 +195,7 @@ publish cosign/SLSA signatures. To avoid a self-referential trust chain
 (where both the archive and its checksums file come from the same release
 URL and can be swapped together), the action pins the SHA256 of upstream's
 `checksums.txt` / `checksums.windows.txt` for the **default** `version`
-directly in `action.yml`. The trust anchor is therefore this repository's
+directly in `scripts/install.sh`. The trust anchor is therefore this repository's
 git history (commit review, branch protection) rather than the upstream
 release URL.
 
